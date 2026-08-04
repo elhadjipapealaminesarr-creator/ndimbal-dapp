@@ -95,7 +95,20 @@ export function NdimbalDapp() {
 
   const mint = () => send("Mint 1,000,000 cUSDT", async () => { const e = await encOne(TOKEN, 1_000_000); return write(TOKEN, TOKEN_ABI, "mint", [addr, e.handle, e.proof]); });
   const approve = () => send("Allow pool", async () => { const until = BigInt(Math.floor(Date.now() / 1000) + 365 * 24 * 3600); return write(TOKEN, TOKEN_ABI, "setOperator", [POOL, until]); });
-  const deposit = () => { const v = +dep || 0; if (v <= 0) return; send(`Deposit ${v}`, async () => { const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "deposit", [e.handle, e.proof]); }); };
+  const deposit = () => { const v = +dep || 0; if (v <= 0) return; send(`Deposit ${v}`, async () => {
+    // Jury-proof: if deposits are locked ONLY because the round already ended (nobody triggered the draw),
+    // run the draw first — it advances the round and reopens the deposit window — then deposit in the same flow.
+    const [op, end] = await Promise.all([read(POOL, POOL_ABI, "depositsOpen"), read(POOL, POOL_ABI, "roundEnd")]);
+    const now = Math.floor(Date.now() / 1000);
+    if (!op && Number(end) <= now) {
+      add("  ⓘ Round ended — running the draw first to reopen deposits…");
+      const dh: string = await write(POOL, POOL_ABI, "draw", []);
+      add("  draw tx: https://sepolia.etherscan.io/tx/" + dh);
+      const eth = (window as unknown as { ethereum: any }).ethereum;
+      for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 1500)); const rc = await eth.request({ method: "eth_getTransactionReceipt", params: [dh] }).catch(() => null); if (rc) break; }
+    }
+    const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "deposit", [e.handle, e.proof]);
+  }); };
   const withdraw = () => { const v = +dep || 0; if (v <= 0) return; send(`Withdraw ${v}`, async () => { const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "withdraw", [e.handle, e.proof]); }); };
   const giveBack = () => send(`Set give-back ${pct}%`, async () => { const e = await encOne(POOL, pct); return write(POOL, POOL_ABI, "setGiveBack", [e.handle, e.proof]); });
   const fundPrize = () => { const v = +fund || 0; if (v <= 0) return; send(`Fund prize ${v}`, async () => { const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "fundPrize", [e.handle, e.proof]); }); };

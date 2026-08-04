@@ -27,4 +27,5 @@ export const POOL_ABI = parseAbi([
   "function participantCount() view returns (uint256)",
   "function round() view returns (uint256)",
   "function depositsOpen() view returns (bool)",
+  "function roundEnd() view returns (uint64)",
 ]);
