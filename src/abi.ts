@@ -2,8 +2,8 @@ import { parseAbi } from "viem";
 
 // Sepolia — DEMO instance (euint128), 180s rounds / 20s lock, for a live playable draw.
 // (The 1-day-round "production-config" reference stays at 0x579Dc066…7f0c.)
-export const POOL = "0xF99a659f0155b0697B3B7ab5515e56bc6c23BB32" as const;
-export const TOKEN = "0xb2E1052f2e42479fE18351F501FBd78A1E33FA22" as const;
+export const POOL = "0xb3C31581fB6D70f79C00E39bF77Dd76f4BEbF71D" as const;
+export const TOKEN = "0x30ecf115587eefeABA34FFd8340053045fF7125f" as const;
 
 // Encrypted params are bytes32 handles + a bytes proof in the ABI.
 export const TOKEN_ABI = parseAbi([
