@@ -200,7 +200,7 @@ export function NdimbalDapp() {
             </div>
             <div className="trust"><span className="ok">✔</span> Real transactions · your principal is never at risk · powered by FHE</div>
           </div>
-          <div className="art">{POT}</div>
+          <div className="art">{POT}<div className="prizeb"><span>Prize this round</span><b>🔒 encrypted</b><i>revealed only to the winner</i></div></div>
         </div>
       </header>
 
@@ -225,18 +225,31 @@ export function NdimbalDapp() {
           </div>
         </section>
 
-        {/* guide */}
-        <section id="play">
-          <div className="sec-h"><h2>Play a full round — live</h2><p>Every action below is a <b>real transaction on Sepolia</b>. New here? Just follow the steps top to bottom — each opens MetaMask and confirms in ~15–30s.</p></div>
-
-          {!addr && (
-            <div className="guide">
-              <b>Start here —</b> connect your wallet to unlock the steps. You'll need a little Sepolia test-ETH for gas.
-              <button className="btn p sm" style={{ marginLeft: 12 }} onClick={connect}>Connect wallet</button>
+        {/* play — dark pro console */}
+        <section id="play" className="play-wrap">
+          <div className="play">
+            <div className="play-top">
+              <div className="pt-l">
+                <span className="live"><span className="ld" />LIVE · Sepolia testnet</span>
+                <h2>Play a full round</h2>
+                <p>Every action below is a <b>real on-chain transaction</b>. New here? Just follow the steps top to bottom — each opens MetaMask and confirms in ~15–30s.</p>
+              </div>
+              <div className="ticker">
+                <div className="tk"><span>Round</span><b>{round}</b></div>
+                <div className="tk"><span>Savers</span><b>{pcount}</b></div>
+                <div className="tk"><span>Deposits</span><b className={open === "open" ? "g" : open === "locked" ? "r" : ""}>{open}</b></div>
+                <button className="btn oo mini" disabled={d} onClick={refresh} title="Refresh live stats">↻</button>
+              </div>
             </div>
-          )}
 
-          <div className="console">
+            {!addr && (
+              <div className="guide">
+                <b>Start here —</b> connect your wallet to unlock the steps. You'll need a little Sepolia test-ETH for gas.
+                <button className="btn p sm" style={{ marginLeft: 12 }} onClick={connect}>Connect wallet</button>
+              </div>
+            )}
+
+            <div className="console">
             <div className="step">
               <span className="sdot">1</span>
               <div className="sb">
@@ -294,10 +307,9 @@ export function NdimbalDapp() {
             <div className="step">
               <span className="sdot">6</span>
               <div className="sb">
-                <div className="sh"><h4>The pool &amp; the draw</h4><button className="btn o mini" disabled={d} onClick={refresh}>↻ Refresh</button></div>
-                <p>The draw picks a winner fairly (bigger deposit = better odds) with protocol randomness, entirely on encrypted balances. Available once the round ends.</p>
-                <div className="stats"><div className="stat"><span>Round</span><b>{round}</b></div><div className="stat"><span>Participants</span><b>{pcount}</b></div><div className="stat"><span>Deposits</span><b>{open}</b></div></div>
-                <div className="row" style={{ marginTop: 12 }}><button className="btn gold sm" disabled={d} onClick={draw}>Run the draw</button><button className="btn p sm" disabled={d} onClick={claim}>Claim prize</button><button className="btn ghost sm" disabled={d} onClick={claimSponsored}>Claim sponsored</button></div>
+                <div className="sh"><h4>The pool &amp; the draw</h4></div>
+                <p>The draw picks a winner fairly (bigger deposit = better odds) with protocol randomness, entirely on encrypted balances. Available once the round ends — the live counters are in the header above.</p>
+                <div className="row" style={{ marginTop: 4 }}><button className="btn gold sm" disabled={d} onClick={draw}>Run the draw</button><button className="btn p sm" disabled={d} onClick={claim}>Claim prize</button><button className="btn ghost sm" disabled={d} onClick={claimSponsored}>Claim sponsored</button></div>
               </div>
             </div>
 
@@ -316,6 +328,7 @@ export function NdimbalDapp() {
                 <p className="muted small" style={{ marginBottom: 0 }}>“Did I win?” decrypts to <b>1</b> (won) or <b>0</b> (lost) — a value only you can read.</p>
               </div>
             </div>
+          </div>
           </div>
         </section>
 
@@ -524,4 +537,58 @@ html{scroll-behavior:smooth}
 .ndm .logpop .px{background:transparent;border:0;color:#7fb8a2;font-size:1.3rem;cursor:pointer;line-height:1}
 .ndm .logpop pre{margin:0;font-family:ui-monospace,Menlo,monospace;font-size:.78rem;color:#bfe8d4;padding:12px 14px;height:260px;overflow:auto;white-space:pre-wrap}
 @media (prefers-reduced-motion: reduce){.ndm *{animation:none!important}}
+
+/* ---------- hero: jackpot prize badge (PoolTogether flavour) ---------- */
+.ndm{--neon:#37E1A0}
+.ndm .art{position:relative}
+.ndm .prizeb{position:absolute;left:50%;bottom:-2px;transform:translateX(-50%);background:rgba(11,14,17,.9);backdrop-filter:blur(8px);border:1px solid rgba(228,162,76,.42);border-radius:18px;padding:11px 20px;text-align:center;box-shadow:0 20px 44px rgba(6,12,10,.42);min-width:196px;animation:float 5s ease-in-out infinite}
+.ndm .prizeb span{display:block;font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:#8fbfae;font-weight:700}
+.ndm .prizeb b{display:block;font-size:1.28rem;color:#F0B65C;-webkit-text-fill-color:#F0B65C;margin:3px 0;font-weight:800;letter-spacing:.01em}
+.ndm .prizeb i{font-style:normal;font-size:.7rem;color:#93A0B0}
+
+/* ---------- play: dark pro console (Binance-grade) ---------- */
+.ndm .play-wrap{padding-top:8px}
+.ndm .play{background:linear-gradient(180deg,#0B0E11,#0F151C);border:1px solid #202834;border-radius:30px;padding:26px 28px 10px;color:#E9EEF4;box-shadow:0 44px 96px rgba(6,12,10,.5),inset 0 1px 0 rgba(255,255,255,.03);position:relative;overflow:hidden}
+@media(max-width:560px){.ndm .play{padding:20px 16px 6px;border-radius:24px}}
+.ndm .play::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--green),var(--neon),var(--gold),var(--terra));opacity:.9}
+.ndm .play-top{display:flex;gap:18px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;padding:8px 2px 18px;border-bottom:1px solid #1c2430}
+.ndm .pt-l{min-width:240px;flex:1}
+.ndm .live{display:inline-flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;letter-spacing:.13em;color:var(--neon);background:rgba(55,225,160,.08);border:1px solid rgba(55,225,160,.25);padding:5px 11px;border-radius:999px}
+.ndm .live .ld{width:7px;height:7px;border-radius:50%;background:var(--neon);animation:pulse2 1.5s infinite}
+@keyframes pulse2{0%{box-shadow:0 0 0 0 rgba(55,225,160,.6)}70%{box-shadow:0 0 0 8px rgba(55,225,160,0)}100%{box-shadow:0 0 0 0 rgba(55,225,160,0)}}
+.ndm .play-top h2{color:#fff;-webkit-text-fill-color:#fff;margin:12px 0 4px;font-size:clamp(1.4rem,3.2vw,1.95rem);letter-spacing:-.01em}
+.ndm .pt-l p{color:#93A0B0;margin:0;font-size:.9rem;max-width:52ch}
+.ndm .pt-l p b{color:#cbd5e1}
+.ndm .ticker{display:flex;gap:10px;align-items:stretch}
+.ndm .tk{background:#141b23;border:1px solid #232d3a;border-radius:14px;padding:9px 15px;min-width:80px;display:flex;flex-direction:column;gap:3px}
+.ndm .tk span{font-size:.64rem;letter-spacing:.09em;text-transform:uppercase;color:#7E8B9B;font-weight:700}
+.ndm .tk b{font-size:1.18rem;font-family:ui-monospace,Menlo,monospace;color:#E9EEF4;letter-spacing:-.02em}
+.ndm .tk b.g{color:var(--neon)} .ndm .tk b.r{color:#F5B740}
+.ndm .btn.oo{background:#151c24;color:#cfe6dc;border:1px solid #26313d;font-size:1.05rem;line-height:1;padding:0 13px}
+.ndm .btn.oo:hover{background:#1b2530;transform:translateY(-2px)}
+.ndm .play .console{background:transparent;border:0;box-shadow:none;padding:0}
+.ndm .play .step{padding:22px 2px;gap:16px}
+.ndm .play .step+.step{border-top:1px solid #1b2330}
+.ndm .play .sdot{background:linear-gradient(180deg,#14c98d,#0e9268);color:#03130d;box-shadow:0 5px 15px rgba(16,170,116,.4);border:1px solid rgba(255,255,255,.08)}
+.ndm .play .sh h4{color:#F2F6FA}
+.ndm .play .sb>p{color:#8F9CAC}
+.ndm .play .sb>p b,.ndm .play .step .sb b{color:#DCE5EE}
+.ndm .play label{color:#AEB9C6}
+.ndm .play input[type=number],.ndm .play input[type=text]{background:#0e141b;border:1px solid #28323f;color:#F2F6FA;-webkit-text-fill-color:#F2F6FA}
+.ndm .play input[type=number]:focus,.ndm .play input[type=text]:focus{outline:none;border-color:var(--neon);box-shadow:0 0 0 3px rgba(55,225,160,.14)}
+.ndm .play input::placeholder{color:#5f6b7a;-webkit-text-fill-color:#5f6b7a}
+.ndm .play input[type=range]{accent-color:var(--neon)}
+.ndm .play .fhe{background:rgba(55,225,160,.09);color:#7fe9c2;border:1px solid rgba(55,225,160,.2)}
+.ndm .play .opt{background:#141b23;border:1px solid #28323f;color:#8b97a6}
+.ndm .play .btn.o{background:#151c24;color:#cfe6dc;border:1px solid #28323f;box-shadow:none}
+.ndm .play .btn.o:hover{background:#1b2530}
+.ndm .play .btn.ghost{background:transparent;border:1px solid #2b3644;color:#b9c6d3}
+.ndm .play .btn.mini{background:#151c24;color:#cfe6dc;border:1px solid #28323f}
+.ndm .play .dec,.ndm .play .stat{background:#0f151d;border:1px solid #232d3a}
+.ndm .play .dl,.ndm .play .stat span{color:#8390a0}
+.ndm .play .dv b,.ndm .play .stat b{color:#F2F6FA}
+.ndm .play .muted{color:#8390a0}
+.ndm .play .guide{background:linear-gradient(180deg,#132019,#101a14);border:1px solid #234436;color:#cfe6dc}
+.ndm .play .guide b{color:#eafff6}
+@media(max-width:640px){.ndm .ticker{width:100%}.ndm .tk{flex:1}}
 `;
