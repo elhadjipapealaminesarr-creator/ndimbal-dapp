@@ -456,7 +456,7 @@ html{scroll-behavior:smooth}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 .ndm section{padding:22px 0}
 .ndm .sec-h{text-align:center;max-width:660px;margin:0 auto 20px}
-.ndm .sec-h h2{font-size:clamp(1.5rem,3.6vw,2.05rem);margin:0;letter-spacing:-.01em}
+.ndm .sec-h h2{font-size:clamp(1.5rem,3.6vw,2.05rem);margin:0;letter-spacing:-.01em;color:var(--green-d)!important;-webkit-text-fill-color:var(--green-d)!important;font-weight:800;opacity:1!important;animation:none!important}
 .ndm .sec-h p{color:var(--muted);margin:10px 0 0}
 .ndm .feats{display:grid;grid-template-columns:repeat(4,1fr)}
 @media(max-width:720px){.ndm .feats{grid-template-columns:repeat(2,1fr);row-gap:22px}}
