@@ -410,7 +410,7 @@ const IX = {
 const CSS = `
 html{scroll-behavior:smooth}
 .ndm{--bg:#FBF7F0;--card:#fff;--ink:#17233A;--muted:#6E7688;--line:#EEE4D6;--green:#0E5A4A;--green-d:#0A4638;--gold:#E4A24C;--gold-d:#B87A28;--terra:#C75B39;--soft:#E4EFEA;--r:28px;--r-sm:18px;--sh:0 22px 60px rgba(23,35,58,.10);--sh-s:0 10px 30px rgba(23,35,58,.07);--ease:cubic-bezier(.2,.8,.2,1);
-  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:radial-gradient(1200px 700px at 80% -10%,#f3ede0 0,var(--bg) 55%);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+  font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:radial-gradient(1200px 700px at 80% -10%,#f3ede0 0,var(--bg) 55%);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh;position:relative;z-index:1;max-width:1220px;margin:0 auto;box-shadow:0 0 90px rgba(8,19,16,.55),0 0 0 1px rgba(255,255,255,.05)}
 .ndm *{box-sizing:border-box} .ndm a{color:inherit;text-decoration:none}
 .ndm .wrap{max-width:1020px;margin:0 auto;padding:0 20px}
 .ndm .pattern{height:6px;background:repeating-linear-gradient(135deg,var(--green) 0 14px,var(--gold) 14px 20px,var(--terra) 20px 28px);background-size:56px 100%;animation:stripe 3.5s linear infinite}
