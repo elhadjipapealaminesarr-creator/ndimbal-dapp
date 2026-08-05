@@ -11,13 +11,28 @@ const readProvider = new JsonRpcProvider(
   11155111,
 );
 
-// Read the injected wallet defensively — on a browser without MetaMask this is simply undefined,
-// and must never throw at module-eval time (a throw here would blank the whole page before React mounts).
+// A minimal EIP-1193 stand-in used ONLY when the browser has no injected wallet. It answers the read-only
+// init calls the SDK makes (so createConfig succeeds and the WHOLE app renders — "ready to use", not a black
+// screen), and fails clearly on any signing request so the user is told to install a wallet. Real reads go
+// through `readProvider` below, which needs no wallet at all.
+const walletStub = {
+  isMetaMask: false,
+  request: async (args: { method?: string } = {}) => {
+    if (args.method === "eth_chainId") return "0xaa36a7"; // Sepolia
+    if (args.method === "eth_accounts") return [];          // no connected accounts yet
+    throw new Error("No browser wallet detected — install MetaMask to sign transactions.");
+  },
+  on: () => walletStub,
+  removeListener: () => walletStub,
+};
+
+// Return the injected wallet if present, otherwise the stub — never undefined, never throws at module-eval.
 function safeEthereum(): any {
   try {
-    return typeof window !== "undefined" ? (window as unknown as { ethereum?: any }).ethereum : undefined;
+    const injected = typeof window !== "undefined" ? (window as unknown as { ethereum?: any }).ethereum : undefined;
+    return injected || walletStub;
   } catch {
-    return undefined;
+    return walletStub;
   }
 }
 
