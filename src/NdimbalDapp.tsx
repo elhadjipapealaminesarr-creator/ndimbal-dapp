@@ -235,10 +235,10 @@ export function NdimbalDapp() {
                 <p>Every action below is a <b>real on-chain transaction</b>. New here? Just follow the steps top to bottom — each opens MetaMask and confirms in ~15–30s.</p>
               </div>
               <div className="ticker">
-                <div className="tk"><span>Round</span><b>{round}</b></div>
-                <div className="tk"><span>Savers</span><b>{pcount}</b></div>
-                <div className="tk"><span>Deposits</span><b className={open === "open" ? "g" : open === "locked" ? "r" : ""}>{open}</b></div>
-                <button className="btn oo mini" disabled={d} onClick={refresh} title="Refresh live stats">↻</button>
+                <div className="tk"><span>Round</span><b translate="no">{round}</b></div>
+                <div className="tk"><span>Savers</span><b translate="no">{pcount}</b></div>
+                <div className="tk"><span>Deposits</span><b translate="no" className={"dot " + (open === "open" ? "g" : open === "locked" ? "r" : "")}>{open}</b></div>
+                <button className="btn oo mini spin" disabled={d} onClick={refresh} title="Refresh live stats">↻</button>
               </div>
             </div>
 
@@ -276,9 +276,9 @@ export function NdimbalDapp() {
               <div className="sb">
                 <div className="sh"><h4>Solidarity dial <span className="opt">optional</span></h4><Fhe t="only you see it" /></div>
                 <p>If you win, how much of your prize goes back to the community? Your choice is <b>encrypted</b> — no social pressure, just your real generosity.</p>
-                <label>Give-back if I win: <b>{pct}%</b></label>
+                <label>Give-back if I win: <b translate="no">{pct}%</b></label>
                 <input type="range" min={0} max={100} value={pct} onChange={(e) => setPct(+e.target.value)} />
-                <button className="btn p sm" style={{ marginTop: 10 }} disabled={d} onClick={giveBack}>Set give-back ({pct}%)</button>
+                <button className="btn p sm" style={{ marginTop: 10 }} disabled={d} onClick={giveBack}>Set give-back (<span translate="no">{pct}%</span>)</button>
               </div>
             </div>
 
@@ -320,10 +320,10 @@ export function NdimbalDapp() {
                 <p>Sign once to authorize, then reveal values that <b>only you</b> can decrypt — nobody else, not even us.</p>
                 {!authed && <button className="btn p sm" style={{ margin: "2px 0 12px" }} disabled={!addr || authorizing} onClick={authorize}>{authorizing ? "Signing…" : "Authorize decryption (sign once)"}</button>}
                 <div className="dec-grid">
-                  <div className="dec"><div className="dl">Did I win? (last round)</div><div className="dv"><b>{dval("win")}</b><button className="btn o mini" disabled={d} onClick={async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; decryptSlot("win", POOL, "didWin", [cur, addr]); }}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">My balance in the pool</div><div className="dv"><b>{dval("pool")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("pool", POOL, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">My wallet cUSDT</div><div className="dv"><b>{dval("wallet")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("wallet", TOKEN, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">Sponsored winnings</div><div className="dv"><b>{dval("sponsored")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("sponsored", POOL, "sponsoredWonOf", [addr])}>decrypt</button></div></div>
+                  <div className="dec"><div className="dl">Did I win? (last round)</div><div className="dv"><b translate="no">{dval("win")}</b><button className="btn o mini" disabled={d} onClick={async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; decryptSlot("win", POOL, "didWin", [cur, addr]); }}>decrypt</button></div></div>
+                  <div className="dec"><div className="dl">My balance in the pool</div><div className="dv"><b translate="no">{dval("pool")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("pool", POOL, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
+                  <div className="dec"><div className="dl">My wallet cUSDT</div><div className="dv"><b translate="no">{dval("wallet")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("wallet", TOKEN, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
+                  <div className="dec"><div className="dl">Sponsored winnings</div><div className="dv"><b translate="no">{dval("sponsored")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("sponsored", POOL, "sponsoredWonOf", [addr])}>decrypt</button></div></div>
                 </div>
                 <p className="muted small" style={{ marginBottom: 0 }}>“Did I win?” decrypts to <b>1</b> (won) or <b>0</b> (lost) — a value only you can read.</p>
               </div>
@@ -591,4 +591,20 @@ html{scroll-behavior:smooth}
 .ndm .play .guide{background:linear-gradient(180deg,#132019,#101a14);border:1px solid #234436;color:#cfe6dc}
 .ndm .play .guide b{color:#eafff6}
 @media(max-width:640px){.ndm .ticker{width:100%}.ndm .tk{flex:1}}
+
+/* ---------- livelier ticker, refresh + animated optional badges ---------- */
+.ndm .tk{position:relative;overflow:hidden;transition:border-color .3s,transform .2s}
+.ndm .tk:hover{transform:translateY(-2px);border-color:#2f6b52}
+.ndm .tk::after{content:"";position:absolute;left:-60%;top:0;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(55,225,160,.10),transparent);transform:skewX(-18deg);animation:tkSheen 5.5s ease-in-out infinite}
+@keyframes tkSheen{0%,70%{left:-60%}100%{left:160%}}
+.ndm .tk b.dot::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle;background:#5b6675}
+.ndm .tk b.dot.g::before{background:var(--neon);box-shadow:0 0 0 0 rgba(55,225,160,.7);animation:pulse2 1.5s infinite}
+.ndm .tk b.dot.r::before{background:#F5B740;box-shadow:0 0 0 0 rgba(245,183,64,.6);animation:pulse2 1.6s infinite}
+.ndm .btn.oo.spin{transition:transform .5s var(--ease),background .2s,color .2s}
+.ndm .btn.oo.spin:hover{transform:rotate(180deg);background:rgba(55,225,160,.14);color:var(--neon);border-color:rgba(55,225,160,.4)}
+.ndm .btn.oo.spin:active{transform:rotate(360deg)}
+/* optional / facultatif pills — soft glow pulse so they read as interactive */
+.ndm .opt{animation:optPulse 2.6s ease-in-out infinite}
+.ndm .play .opt{border-color:rgba(55,225,160,.28);color:#8fe9c5;background:rgba(55,225,160,.07)}
+@keyframes optPulse{0%,100%{box-shadow:0 0 0 0 rgba(55,225,160,0)}50%{box-shadow:0 0 0 4px rgba(55,225,160,.14)}}
 `;
