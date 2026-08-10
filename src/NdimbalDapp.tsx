@@ -39,7 +39,7 @@ export function NdimbalDapp() {
     const t = slots[slot];
     if (!t) return "—";
     const v = decrypt.data?.[t.encryptedValue];
-    return v === undefined ? "decrypting…" : `${v.toString()} cUSDT`;
+    return v === undefined ? "decrypting…" : `${v.toString()} cUSDC`;
   };
 
   const add = (m: string) => setLog((l) => [...l, `[${new Date().toLocaleTimeString()}] ${m}`].slice(-40));
@@ -97,7 +97,7 @@ export function NdimbalDapp() {
   const write = (address: Hex, abi: any, fn: string, args: any[]) => (sdk.signer as any).writeContract({ address, abi, functionName: fn, args });
   const read = (address: Hex, abi: any, fn: string, args: any[] = []) => (sdk.provider as any).readContract({ address, abi, functionName: fn, args });
 
-  const mint = () => send("Mint 1,000,000 cUSDT", async () => { const e = await encOne(TOKEN, 1_000_000); return write(TOKEN, TOKEN_ABI, "mint", [addr, e.handle, e.proof]); });
+  const mint = () => send("Mint 1,000,000 cUSDC", async () => { const e = await encOne(TOKEN, 1_000_000); return write(TOKEN, TOKEN_ABI, "mint", [addr, e.handle, e.proof]); });
   const approve = () => send("Allow pool", async () => { const until = BigInt(Math.floor(Date.now() / 1000) + 365 * 24 * 3600); return write(TOKEN, TOKEN_ABI, "setOperator", [POOL, until]); });
   const deposit = () => { const v = +dep || 0; if (v <= 0) return; send(`Deposit ${v}`, async () => {
     // Jury-proof: if deposits are locked ONLY because the round already ended (nobody triggered the draw),
@@ -270,7 +270,7 @@ export function NdimbalDapp() {
               <span className="sdot">1</span>
               <div className="sb">
                 <div className="sh"><h4>Get test tokens</h4><Fhe t="encrypted" /></div>
-                <p>First time only. <b>Mint</b> gives you 1,000,000 demo cUSDT, then <b>Allow pool</b> lets NDIMBAL move them when you deposit.</p>
+                <p>First time only. <b>Mint</b> gives you 1,000,000 demo cUSDC, then <b>Allow pool</b> lets NDIMBAL move them when you deposit.</p>
                 <div className="row"><button className="btn gold sm" disabled={d} onClick={mint}>Mint 1,000,000</button><button className="btn o sm" disabled={d} onClick={approve}>Allow pool</button></div>
               </div>
             </div>
@@ -281,7 +281,7 @@ export function NdimbalDapp() {
                 <div className="sh"><h4>Deposit into the pool</h4><Fhe t="encrypted" /></div>
                 <p>Your amount is encrypted in your browser. <b>No-loss</b> — withdraw your principal any time; you only ever play the prize.</p>
                 <div className="row">
-                  <div className="grow"><label>Amount (cUSDT)</label><input type="number" value={dep} onChange={(e) => setDep(e.target.value)} /></div>
+                  <div className="grow"><label>Amount (cUSDC)</label><input type="number" value={dep} onChange={(e) => setDep(e.target.value)} /></div>
                   <div className="ba"><button className="btn p sm" disabled={d} onClick={deposit}>Deposit</button><button className="btn ghost sm" disabled={d} onClick={withdraw}>Withdraw</button></div>
                 </div>
               </div>
@@ -366,7 +366,7 @@ export function NdimbalDapp() {
                 <div className="dec-grid">
                   <div className="dec"><div className="dl">Did I win? (last round)</div><div className="dv"><b translate="no">{dval("win")}</b><button className="btn o mini" disabled={d} onClick={async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; decryptSlot("win", POOL, "didWin", [cur, addr]); }}>decrypt</button></div></div>
                   <div className="dec"><div className="dl">My balance in the pool</div><div className="dv"><b translate="no">{dval("pool")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("pool", POOL, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">My wallet cUSDT</div><div className="dv"><b translate="no">{dval("wallet")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("wallet", TOKEN, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
+                  <div className="dec"><div className="dl">My wallet cUSDC</div><div className="dv"><b translate="no">{dval("wallet")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("wallet", TOKEN, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
                   <div className="dec"><div className="dl">Sponsored winnings</div><div className="dv"><b translate="no">{dval("sponsored")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("sponsored", POOL, "sponsoredWonOf", [addr])}>decrypt</button></div></div>
                 </div>
                 <p className="muted small" style={{ marginBottom: 0 }}>“Did I win?” decrypts to <b>1</b> (won) or <b>0</b> (lost) — a value only you can read.</p>

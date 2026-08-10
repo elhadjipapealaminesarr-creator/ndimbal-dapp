@@ -10,7 +10,7 @@ Real transactions on Sepolia, **encrypted in your browser, decrypted only by you
 
 A guided **7-step** flow to play a full confidential round:
 
-1. **Get test tokens** — mint demo cUSDT and authorize the pool.
+1. **Get test tokens** — mint demo cUSDC and authorize the pool.
 2. **Deposit** — FHE-encrypted client-side; withdraw any time (no loss).
 3. **Solidarity dial** — privately pre-set what share of a win you'd give back.
 4. **Tanti caché (hidden benefactor)** — secretly route a share of your prize to a chosen member if you win — nobody learns who, to whom, or how much.
