@@ -27,6 +27,8 @@ export function NdimbalDapp() {
   const [sponPct, setSponPct] = useState("20");
   const [log, setLog] = useState<string[]>([]);
   const [showLog, setShowLog] = useState(false);
+  const [roundEndTs, setRoundEndTs] = useState<number | null>(null); // unix seconds the current round ends
+  const [nowTs, setNowTs] = useState(() => Math.floor(Date.now() / 1000));
 
   const [slots, setSlots] = useState<Record<string, Target>>({});
   const targets = useMemo(() => Object.values(slots), [slots]);
@@ -119,10 +121,12 @@ export function NdimbalDapp() {
 
   async function refresh() {
     try {
-      const [r, pc, op] = await Promise.all([
-        read(POOL, POOL_ABI, "round"), read(POOL, POOL_ABI, "participantCount"), read(POOL, POOL_ABI, "depositsOpen"),
+      const [r, pc, op, end] = await Promise.all([
+        read(POOL, POOL_ABI, "round"), read(POOL, POOL_ABI, "participantCount"),
+        read(POOL, POOL_ABI, "depositsOpen"), read(POOL, POOL_ABI, "roundEnd"),
       ]);
       setRound("#" + r.toString()); setPcount(pc.toString()); setOpen(op ? "open" : "locked");
+      setRoundEndTs(Number(end));
     } catch (e) { add("refresh: " + (e as Error).message); }
   }
 
@@ -161,6 +165,13 @@ export function NdimbalDapp() {
   const logRef = useRef<HTMLPreElement>(null);
   useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [log, showLog]);
   useEffect(() => { if (log.length) setShowLog(true); }, [log.length]);
+  // tick every second so the round countdown stays live
+  useEffect(() => { const t = setInterval(() => setNowTs(Math.floor(Date.now() / 1000)), 1000); return () => clearInterval(t); }, []);
+
+  // seconds until the draw is allowed (null = unknown until first refresh). roundReady => draw() won't revert "round not over".
+  const drawIn = roundEndTs == null ? null : Math.max(0, roundEndTs - nowTs);
+  const roundReady = drawIn == null || drawIn <= 0;
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
   // floating cowries (computed once)
   const coins = useMemo(() => Array.from({ length: 16 }, () => {
@@ -309,7 +320,18 @@ export function NdimbalDapp() {
               <div className="sb">
                 <div className="sh"><h4>The pool &amp; the draw</h4></div>
                 <p>The draw picks a winner fairly (bigger deposit = better odds) with protocol randomness, entirely on encrypted balances. Available once the round ends — the live counters are in the header above.</p>
-                <div className="row" style={{ marginTop: 4 }}><button className="btn gold sm" disabled={d} onClick={draw}>Run the draw</button><button className="btn p sm" disabled={d} onClick={claim}>Claim prize</button><button className="btn ghost sm" disabled={d} onClick={claimSponsored}>Claim sponsored</button></div>
+                {roundEndTs != null && (
+                  <div className={"cdown " + (roundReady ? "rdy" : "")}>
+                    {roundReady
+                      ? <><span className="cdot" />Round ended — the draw is available</>
+                      : <>⏳ Draw possible in <b translate="no">{mmss(drawIn!)}</b> · deposits lock shortly before the draw</>}
+                  </div>
+                )}
+                <div className="row" style={{ marginTop: 10 }}>
+                  <button className="btn gold sm" disabled={d || !roundReady} onClick={draw}>{roundReady ? "Run the draw" : <>Draw in <span translate="no">{mmss(drawIn!)}</span></>}</button>
+                  <button className="btn p sm" disabled={d} onClick={claim}>Claim prize</button>
+                  <button className="btn ghost sm" disabled={d} onClick={claimSponsored}>Claim sponsored</button>
+                </div>
               </div>
             </div>
 
@@ -607,4 +629,9 @@ html{scroll-behavior:smooth}
 .ndm .opt{animation:optPulse 2.6s ease-in-out infinite}
 .ndm .play .opt{border-color:rgba(55,225,160,.28);color:#8fe9c5;background:rgba(55,225,160,.07)}
 @keyframes optPulse{0%,100%{box-shadow:0 0 0 0 rgba(55,225,160,0)}50%{box-shadow:0 0 0 4px rgba(55,225,160,.14)}}
+/* round countdown (so a juror never hits "round not over" and mistakes it for a bug) */
+.ndm .cdown{display:inline-flex;align-items:center;gap:8px;margin:2px 0;font-size:.85rem;font-weight:700;color:#F5B740;background:rgba(245,183,64,.09);border:1px solid rgba(245,183,64,.26);padding:7px 13px;border-radius:999px}
+.ndm .cdown b{color:#fff;font-family:ui-monospace,Menlo,monospace;letter-spacing:.02em}
+.ndm .cdown.rdy{color:var(--neon);background:rgba(55,225,160,.09);border-color:rgba(55,225,160,.3)}
+.ndm .cdown .cdot{width:8px;height:8px;border-radius:50%;background:var(--neon);animation:pulse2 1.4s infinite}
 `;
