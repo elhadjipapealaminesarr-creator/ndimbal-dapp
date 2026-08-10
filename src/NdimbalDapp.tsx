@@ -106,10 +106,7 @@ export function NdimbalDapp() {
     const now = Math.floor(Date.now() / 1000);
     if (!op && Number(end) <= now) {
       add("  ⓘ Round ended — running the draw first to reopen deposits…");
-      const dh: string = await write(POOL, POOL_ABI, "draw", []);
-      add("  draw tx: https://sepolia.etherscan.io/tx/" + dh);
-      const eth = (window as unknown as { ethereum: any }).ethereum;
-      for (let i = 0; i < 40; i++) { await new Promise((r) => setTimeout(r, 1500)); const rc = await eth.request({ method: "eth_getTransactionReceipt", params: [dh] }).catch(() => null); if (rc) break; }
+      await runBatchedDraw();
     }
     const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "deposit", [e.handle, e.proof]);
   }); };
@@ -120,7 +117,39 @@ export function NdimbalDapp() {
   const simulateYield = () => { const v = +yieldAmt || 0; if (v <= 0) return; send(`Vault earns ${v} yield (demo)`, async () => write(VAULT, VAULT_ABI, "accrue", [POOL, BigInt(v)])); };
   const harvestYield = () => send("Harvest yield → prize", async () => write(POOL, POOL_ABI, "harvestYield", []));
   const setSponsorship = () => { const i = +sponIdx || 0; const p = +sponPct || 0; if (i < 1) return; send(`Set hidden benefactor (member #${i}, ${p}%)`, async () => { const e = await encTwo(POOL, i, p); return write(POOL, POOL_ABI, "setSponsorship", [e.h1, e.h2, e.proof]); }); };
-  const draw = () => send("Run the draw", async () => write(POOL, POOL_ABI, "draw", []));
+  async function waitTx(hash: string) {
+    const eth = (window as unknown as { ethereum: any }).ethereum;
+    for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 1500)); const rc = await eth.request({ method: "eth_getTransactionReceipt", params: [hash] }).catch(() => null); if (rc) return rc; }
+    return null;
+  }
+  // Batched draw: process the round in batches of 8 across several transactions (drawTickets → drawWinners),
+  // so the pool scales to 32 savers past the single-tx HCU limit. Advances the round when the last batch lands.
+  async function runBatchedDraw() {
+    const B = 8n;
+    const r = await read(POOL, POOL_ABI, "round");
+    let phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
+    while (phase < 2) {
+      add("  🎟️ draw — tickets batch…");
+      const h: string = await write(POOL, POOL_ABI, "drawTickets", [B]);
+      const rc = await waitTx(h);
+      if (rc && rc.status !== "0x1") { add("  ❌ tickets batch reverted"); return false; }
+      phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
+    }
+    while (phase < 3) {
+      add("  🏆 draw — winners batch…");
+      const h: string = await write(POOL, POOL_ABI, "drawWinners", [B]);
+      const rc = await waitTx(h);
+      if (rc && rc.status !== "0x1") { add("  ❌ winners batch reverted"); return false; }
+      phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
+    }
+    return true;
+  }
+  const draw = async () => {
+    setBusy(true); add("→ Running the batched draw (8 savers per transaction)…");
+    try { if (await runBatchedDraw()) { add("  ✅ Draw complete"); await refresh(); } }
+    catch (e) { add("  ❌ draw failed: " + ((e as Error).message || e)); }
+    finally { setBusy(false); }
+  };
   const claim = () => send("Claim prize", async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; return write(POOL, POOL_ABI, "claim", [cur]); });
   const claimSponsored = () => send("Claim sponsored winnings", async () => write(POOL, POOL_ABI, "claimSponsored", []));
 
