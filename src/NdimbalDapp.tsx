@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bytesToHex } from "viem";
 import { useZamaSDK, useGrantPermit, useDecryptValues } from "@zama-fhe/react-sdk";
-import { POOL, TOKEN, POOL_ABI, TOKEN_ABI } from "./abi";
+import { POOL, TOKEN, VAULT, POOL_ABI, TOKEN_ABI, VAULT_ABI } from "./abi";
 
 type Hex = `0x${string}`;
 const asHex = (v: unknown): Hex => (typeof v === "string" ? (v as Hex) : bytesToHex(v as Uint8Array));
@@ -22,6 +22,8 @@ export function NdimbalDapp() {
   const [authed, setAuthed] = useState(false);
   const [dep, setDep] = useState("1000");
   const [fund, setFund] = useState("500");
+  const [vaultAmt, setVaultAmt] = useState("1000");
+  const [yieldAmt, setYieldAmt] = useState("50");
   const [pct, setPct] = useState(30);
   const [sponIdx, setSponIdx] = useState("1");
   const [sponPct, setSponPct] = useState("20");
@@ -114,6 +116,9 @@ export function NdimbalDapp() {
   const withdraw = () => { const v = +dep || 0; if (v <= 0) return; send(`Withdraw ${v}`, async () => { const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "withdraw", [e.handle, e.proof]); }); };
   const giveBack = () => send(`Set give-back ${pct}%`, async () => { const e = await encOne(POOL, pct); return write(POOL, POOL_ABI, "setGiveBack", [e.handle, e.proof]); });
   const fundPrize = () => { const v = +fund || 0; if (v <= 0) return; send(`Fund prize ${v}`, async () => { const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "fundPrize", [e.handle, e.proof]); }); };
+  const fundVault = () => { const v = +vaultAmt || 0; if (v <= 0) return; send(`Route ${v} into the yield vault`, async () => { const e = await encOne(POOL, v); return write(POOL, POOL_ABI, "fundVault", [e.handle, e.proof]); }); };
+  const simulateYield = () => { const v = +yieldAmt || 0; if (v <= 0) return; send(`Vault earns ${v} yield (demo)`, async () => write(VAULT, VAULT_ABI, "accrue", [POOL, BigInt(v)])); };
+  const harvestYield = () => send("Harvest yield → prize", async () => write(POOL, POOL_ABI, "harvestYield", []));
   const setSponsorship = () => { const i = +sponIdx || 0; const p = +sponPct || 0; if (i < 1) return; send(`Set hidden benefactor (member #${i}, ${p}%)`, async () => { const e = await encTwo(POOL, i, p); return write(POOL, POOL_ABI, "setSponsorship", [e.h1, e.h2, e.proof]); }); };
   const draw = () => send("Run the draw", async () => write(POOL, POOL_ABI, "draw", []));
   const claim = () => send("Claim prize", async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; return write(POOL, POOL_ABI, "claim", [cur]); });
@@ -311,7 +316,24 @@ export function NdimbalDapp() {
               <div className="sb">
                 <div className="sh"><h4>Fund the prize <span className="opt">optional</span></h4><Fhe t="encrypted" /></div>
                 <p>Top up the prize pot — as a sponsor, NGO or yield source — <b>blindly</b>, without seeing any balance or the winner.</p>
-                <div className="row"><div className="grow"><label>Amount to add (cUSDT)</label><input type="number" value={fund} onChange={(e) => setFund(e.target.value)} /></div><div className="ba"><button className="btn gold sm" disabled={d} onClick={fundPrize}>Fund the prize</button></div></div>
+                <div className="row"><div className="grow"><label>Amount to add (cUSDC)</label><input type="number" value={fund} onChange={(e) => setFund(e.target.value)} /></div><div className="ba"><button className="btn gold sm" disabled={d} onClick={fundPrize}>Fund the prize</button></div></div>
+              </div>
+            </div>
+
+            <div className="step yldstep">
+              <span className="sdot star">★</span>
+              <div className="sb">
+                <div className="sh"><h4>Real yield — the prize funds itself <span className="opt">Morpho</span></h4><Fhe t="confidential" /></div>
+                <p>Instead of a sponsor topping up the prize, route capital into a <b>confidential yield vault</b> (a Sepolia mock of Zama's <b>Steakhouse Confidential Prime USDC</b> vault on Morpho). The vault earns yield; <b>harvest</b> skims <b>only the yield</b> into the prize. Principal stays invested and encrypted — nobody ever sees a balance.</p>
+                <div className="row">
+                  <div className="grow"><label>Capital to route (cUSDC)</label><input type="number" value={vaultAmt} onChange={(e) => setVaultAmt(e.target.value)} /></div>
+                  <div className="ba"><button className="btn p sm" disabled={d} onClick={fundVault}>① Route to vault</button></div>
+                </div>
+                <div className="row" style={{ marginTop: 8 }}>
+                  <div className="grow"><label>Yield earned by the strategy <span className="opt">demo</span></label><input type="number" value={yieldAmt} onChange={(e) => setYieldAmt(e.target.value)} /></div>
+                  <div className="ba"><button className="btn o sm" disabled={d} onClick={simulateYield}>② Earn yield</button><button className="btn gold sm" disabled={d} onClick={harvestYield}>③ Harvest → prize</button></div>
+                </div>
+                <p className="muted small" style={{ marginBottom: 0 }}>The prize is now <b>generated</b>, not injected. In production, ②'s yield comes from the real Morpho strategy — not a button.</p>
               </div>
             </div>
 
@@ -634,4 +656,8 @@ html{scroll-behavior:smooth}
 .ndm .cdown b{color:#fff;font-family:ui-monospace,Menlo,monospace;letter-spacing:.02em}
 .ndm .cdown.rdy{color:var(--neon);background:rgba(55,225,160,.09);border-color:rgba(55,225,160,.3)}
 .ndm .cdown .cdot{width:8px;height:8px;border-radius:50%;background:var(--neon);animation:pulse2 1.4s infinite}
+/* real-yield step — the differentiator, marked in gold */
+.ndm .play .sdot.star{background:linear-gradient(180deg,#efb562,#d6912f);color:#2a1e08;font-size:1rem;box-shadow:0 5px 15px rgba(184,122,40,.4)}
+.ndm .play .step.yldstep{position:relative}
+.ndm .play .step.yldstep::before{content:"";position:absolute;left:-14px;top:22px;bottom:16px;width:3px;border-radius:3px;background:linear-gradient(180deg,var(--gold),transparent)}
 `;

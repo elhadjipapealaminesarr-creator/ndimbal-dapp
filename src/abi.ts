@@ -18,6 +18,8 @@ export const POOL_ABI = parseAbi([
   "function withdraw(bytes32 encAmount, bytes proof)",
   "function setGiveBack(bytes32 encPct, bytes proof)",
   "function fundPrize(bytes32 encAmount, bytes proof)",
+  "function fundVault(bytes32 encAmount, bytes proof)",
+  "function harvestYield()",
   "function setSponsorship(bytes32 encIndexPlus1, bytes32 encPct, bytes proof)",
   "function draw()",
   "function claim(uint256 r)",
@@ -29,4 +31,9 @@ export const POOL_ABI = parseAbi([
   "function round() view returns (uint256)",
   "function depositsOpen() view returns (bool)",
   "function roundEnd() view returns (uint64)",
+]);
+
+// Confidential yield vault (Sepolia mock of the Steakhouse Confidential Prime USDC vault on Morpho).
+export const VAULT_ABI = parseAbi([
+  "function accrue(address holder, uint64 yieldAmount)", // MOCK ONLY: simulate the strategy earning yield
 ]);
