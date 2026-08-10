@@ -2,9 +2,9 @@ import { parseAbi } from "viem";
 
 // Sepolia — live DEMO instance: 10-min rounds / 2-min lock, HCU-proven cap of 3 participants
 // (draw() reverts at 4 — see the contract repo's test/capacity-32.test.js). For a live playable draw.
-export const POOL = "0x8d3c8d1e5BB610fAc29dA026dA0759b0d5fB7AEb" as const;
-export const TOKEN = "0x6AFA34EC415217216331335755C70728a07D18a4" as const;
-export const VAULT = "0x214D33a7dC7E3b8Bf9a76cf6F0CCDA0373A3ae49" as const; // confidential yield vault (Sepolia mock of Steakhouse Prime)
+export const POOL = "0x98d67df5Bf5aD5c4D813d2892eB20613b322fed4" as const;
+export const TOKEN = "0x1D16Db6f9e7044033d391F280fACd4993fF9DA02" as const;
+export const VAULT = "0x6681DE864eF01c935A58E6c05208D050a27eC153" as const; // confidential yield vault (Sepolia mock of Steakhouse Prime)
 
 // Encrypted params are bytes32 handles + a bytes proof in the ABI.
 export const TOKEN_ABI = parseAbi([
