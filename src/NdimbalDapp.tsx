@@ -29,6 +29,8 @@ export function NdimbalDapp() {
   const [sponPct, setSponPct] = useState("20");
   const [log, setLog] = useState<string[]>([]);
   const [showLog, setShowLog] = useState(false);
+  const [showAdv, setShowAdv] = useState(false); // stage 2: collapsible advanced options
+  const [showEngine, setShowEngine] = useState(false); // stage 3: yield engine (advanced)
   const [roundEndTs, setRoundEndTs] = useState<number | null>(null); // unix seconds the current round ends
   const [nowTs, setNowTs] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -127,20 +129,22 @@ export function NdimbalDapp() {
   async function runBatchedDraw() {
     const B = 8n;
     const r = await read(POOL, POOL_ABI, "round");
-    let phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
-    while (phase < 2) {
-      add("  🎟️ draw — tickets batch…");
-      const h: string = await write(POOL, POOL_ABI, "drawTickets", [B]);
-      const rc = await waitTx(h);
-      if (rc && rc.status !== "0x1") { add("  ❌ tickets batch reverted"); return false; }
-      phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
-    }
-    while (phase < 3) {
-      add("  🏆 draw — winners batch…");
-      const h: string = await write(POOL, POOL_ABI, "drawWinners", [B]);
-      const rc = await waitTx(h);
-      if (rc && rc.status !== "0x1") { add("  ❌ winners batch reverted"); return false; }
-      phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
+    // top-3 draw runs in 4 phases (tickets → 2nd max → 3rd max → winners), each in batches of 8.
+    const phases: [number, string, string][] = [
+      [2, "drawTickets", "🎟️ tickets"],
+      [3, "drawMax2", "🥈 2nd place"],
+      [4, "drawMax3", "🥉 3rd place"],
+      [5, "drawWinners", "🏆 winners"],
+    ];
+    for (const [target, fn, label] of phases) {
+      let phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
+      while (phase < target) {
+        add("  " + label + " batch…");
+        const h: string = await write(POOL, POOL_ABI, fn, [B]);
+        const rc = await waitTx(h);
+        if (rc && rc.status !== "0x1") { add("  ❌ " + fn + " batch reverted"); return false; }
+        phase = Number(await read(POOL, POOL_ABI, "drawPhase", [r]));
+      }
     }
     return true;
   }
@@ -151,6 +155,7 @@ export function NdimbalDapp() {
     finally { setBusy(false); }
   };
   const claim = () => send("Claim prize", async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; return write(POOL, POOL_ABI, "claim", [cur]); });
+  const claimReinvest = () => send("Reinvest my prize into the pool (compound)", async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; return write(POOL, POOL_ABI, "claimReinvest", [cur]); });
   const claimSponsored = () => send("Claim sponsored winnings", async () => write(POOL, POOL_ABI, "claimSponsored", []));
 
   async function refresh() {
@@ -270,14 +275,14 @@ export function NdimbalDapp() {
           </div>
         </section>
 
-        {/* play — dark pro console */}
+        {/* play — dark pro console, organised into 4 clear stages */}
         <section id="play" className="play-wrap">
           <div className="play">
             <div className="play-top">
               <div className="pt-l">
                 <span className="live"><span className="ld" />LIVE · Sepolia testnet</span>
                 <h2>Play a full round</h2>
-                <p>Every action below is a <b>real on-chain transaction</b>. New here? Just follow the steps top to bottom — each opens MetaMask and confirms in ~15–30s.</p>
+                <p>Every action below is a <b>real on-chain transaction</b>. Follow the four stages — only <b>Stage 2 (deposit)</b> is required; everything else is optional.</p>
               </div>
               <div className="ticker">
                 <div className="tk"><span>Round</span><b translate="no">{round}</b></div>
@@ -287,121 +292,147 @@ export function NdimbalDapp() {
               </div>
             </div>
 
+            {/* progress stepper — a map of the four stages */}
+            <nav className="stager" aria-label="Stages">
+              {[
+                ["s1", "Start", "Connect · get tokens"],
+                ["s2", "Save & play", "Deposit — required"],
+                ["s3", "Prize engine", "Real yield · Morpho"],
+                ["s4", "Draw & win", "Countdown · claim"],
+              ].map(([id, t, sub], i) => (
+                <a key={id} href={"#" + id} className={"stg-pill" + (i === 1 ? " req" : "")}>
+                  <span className="sp-n">{i + 1}</span>
+                  <span className="sp-t"><b>{t}</b><i>{sub}</i></span>
+                </a>
+              ))}
+            </nav>
+
             {!addr && (
               <div className="guide">
-                <b>Start here —</b> connect your wallet to unlock the steps. You'll need a little Sepolia test-ETH for gas.
+                <b>Start here —</b> connect your wallet to unlock the stages. You'll need a little Sepolia test-ETH for gas.
                 <button className="btn p sm" style={{ marginLeft: 12 }} onClick={connect}>Connect wallet</button>
               </div>
             )}
 
-            <div className="console">
-            <div className="step">
-              <span className="sdot">1</span>
-              <div className="sb">
-                <div className="sh"><h4>Get test tokens</h4><Fhe t="encrypted" /></div>
-                <p>First time only. <b>Mint</b> gives you 1,000,000 demo cUSDC, then <b>Allow pool</b> lets NDIMBAL move them when you deposit.</p>
-                <div className="row"><button className="btn gold sm" disabled={d} onClick={mint}>Mint 1,000,000</button><button className="btn o sm" disabled={d} onClick={approve}>Allow pool</button></div>
-              </div>
-            </div>
-
-            <div className="step">
-              <span className="sdot">2</span>
-              <div className="sb">
-                <div className="sh"><h4>Deposit into the pool</h4><Fhe t="encrypted" /></div>
-                <p>Your amount is encrypted in your browser. <b>No-loss</b> — withdraw your principal any time; you only ever play the prize.</p>
-                <div className="row">
-                  <div className="grow"><label>Amount (cUSDC)</label><input type="number" value={dep} onChange={(e) => setDep(e.target.value)} /></div>
-                  <div className="ba"><button className="btn p sm" disabled={d} onClick={deposit}>Deposit</button><button className="btn ghost sm" disabled={d} onClick={withdraw}>Withdraw</button></div>
+            {/* ───────── STAGE 1 — START ───────── */}
+            <div className="stage" id="s1">
+              <div className="stage-h"><span className="stg-num">1</span><div className="stg-tt"><h3>Start</h3><p>Connect your wallet and grab some demo tokens. First time only.</p></div><Fhe t="encrypted" /></div>
+              <div className="stage-body">
+                <div className="sub-step">
+                  <div className="ss-txt"><b>Get test tokens.</b> <b>Mint</b> gives you 1,000,000 demo cUSDC, then <b>Allow pool</b> lets NDIMBAL move them when you deposit.</div>
+                  <div className="row"><button className="btn gold sm" disabled={d} onClick={mint}>Mint 1,000,000</button><button className="btn o sm" disabled={d} onClick={approve}>Allow pool</button></div>
                 </div>
               </div>
             </div>
 
-            <div className="step">
-              <span className="sdot">3</span>
-              <div className="sb">
-                <div className="sh"><h4>Solidarity dial <span className="opt">optional</span></h4><Fhe t="only you see it" /></div>
-                <p>If you win, how much of your prize goes back to the community? Your choice is <b>encrypted</b> — no social pressure, just your real generosity.</p>
-                <label>Give-back if I win: <b translate="no">{pct}%</b></label>
-                <input type="range" min={0} max={100} value={pct} onChange={(e) => setPct(+e.target.value)} />
-                <button className="btn p sm" style={{ marginTop: 10 }} disabled={d} onClick={giveBack}>Set give-back (<span translate="no">{pct}%</span>)</button>
-              </div>
-            </div>
-
-            <div className="step">
-              <span className="sdot">4</span>
-              <div className="sb">
-                <div className="sh"><h4>Hidden benefactor — Tanti caché <span className="opt">optional</span></h4><Fhe t="fully private" /></div>
-                <p>Secretly send a share of your prize to another member <b>if you win</b> — anonymously. Nobody learns who gave, to whom, or how much. Enter their member number (position in the pool) and the share.</p>
-                <div className="row">
-                  <div className="grow"><label>Beneficiary — member #</label><input type="number" min={1} value={sponIdx} onChange={(e) => setSponIdx(e.target.value)} /></div>
-                  <div className="grow"><label>Share to route (%)</label><input type="number" min={0} max={100} value={sponPct} onChange={(e) => setSponPct(e.target.value)} /></div>
-                  <div className="ba"><button className="btn p sm" disabled={d} onClick={setSponsorship}>Set benefactor</button></div>
+            {/* ───────── STAGE 2 — SAVE & PLAY ───────── */}
+            <div className="stage req" id="s2">
+              <div className="stage-h"><span className="stg-num">2</span><div className="stg-tt"><h3>Save &amp; play <span className="reqtag">required</span></h3><p>Deposit into the pool — that's all it takes to be in the draw. No-loss: withdraw your principal any time.</p></div><Fhe t="encrypted" /></div>
+              <div className="stage-body">
+                <div className="sub-step">
+                  <div className="row">
+                    <div className="grow"><label>Amount (cUSDC)</label><input type="number" value={dep} onChange={(e) => setDep(e.target.value)} /></div>
+                    <div className="ba"><button className="btn p sm" disabled={d} onClick={deposit}>Deposit</button><button className="btn ghost sm" disabled={d} onClick={withdraw}>Withdraw</button></div>
+                  </div>
+                  <p className="muted small" style={{ margin: "10px 0 0" }}>Bigger deposit → better odds. Your amount is encrypted in your browser; you only ever play the prize, never your principal.</p>
                 </div>
-              </div>
-            </div>
 
-            <div className="step">
-              <span className="sdot">5</span>
-              <div className="sb">
-                <div className="sh"><h4>Fund the prize <span className="opt">optional</span></h4><Fhe t="encrypted" /></div>
-                <p>Top up the prize pot — as a sponsor, NGO or yield source — <b>blindly</b>, without seeing any balance or the winner.</p>
-                <div className="row"><div className="grow"><label>Amount to add (cUSDC)</label><input type="number" value={fund} onChange={(e) => setFund(e.target.value)} /></div><div className="ba"><button className="btn gold sm" disabled={d} onClick={fundPrize}>Fund the prize</button></div></div>
-              </div>
-            </div>
+                <button className="adv-toggle" onClick={() => setShowAdv((v) => !v)} aria-expanded={showAdv}>
+                  <span className={"chev" + (showAdv ? " open" : "")}>▸</span> {showAdv ? "Hide advanced options" : "+ Advanced options — solidarity, hidden benefactor, sponsor the prize"}
+                </button>
 
-            <div className="step yldstep">
-              <span className="sdot star">★</span>
-              <div className="sb">
-                <div className="sh"><h4>Real yield — the prize funds itself <span className="opt">Morpho</span></h4><Fhe t="confidential" /></div>
-                <p>Instead of a sponsor topping up the prize, route capital into a <b>confidential yield vault</b> (a Sepolia mock of Zama's <b>Steakhouse Confidential Prime USDC</b> vault on Morpho). The vault earns yield; <b>harvest</b> skims <b>only the yield</b> into the prize. Principal stays invested and encrypted — nobody ever sees a balance.</p>
-                <div className="row">
-                  <div className="grow"><label>Capital to route (cUSDC)</label><input type="number" value={vaultAmt} onChange={(e) => setVaultAmt(e.target.value)} /></div>
-                  <div className="ba"><button className="btn p sm" disabled={d} onClick={fundVault}>① Route to vault</button></div>
-                </div>
-                <div className="row" style={{ marginTop: 8 }}>
-                  <div className="grow"><label>Yield earned by the strategy <span className="opt">demo</span></label><input type="number" value={yieldAmt} onChange={(e) => setYieldAmt(e.target.value)} /></div>
-                  <div className="ba"><button className="btn o sm" disabled={d} onClick={simulateYield}>② Earn yield</button><button className="btn gold sm" disabled={d} onClick={harvestYield}>③ Harvest → prize</button></div>
-                </div>
-                <p className="muted small" style={{ marginBottom: 0 }}>The prize is now <b>generated</b>, not injected. In production, ②'s yield comes from the real Morpho strategy — not a button.</p>
-              </div>
-            </div>
+                {showAdv && (
+                  <div className="adv-body">
+                    <div className="sub-step">
+                      <div className="sh"><h4>Solidarity dial <span className="opt">optional</span></h4><Fhe t="only you see it" /></div>
+                      <p>If you win, how much of your prize goes back to the community? Your choice is <b>encrypted</b> — no social pressure, just your real generosity.</p>
+                      <label>Give-back if I win: <b translate="no">{pct}%</b></label>
+                      <input type="range" min={0} max={100} value={pct} onChange={(e) => setPct(+e.target.value)} />
+                      <button className="btn p sm" style={{ marginTop: 10 }} disabled={d} onClick={giveBack}>Set give-back (<span translate="no">{pct}%</span>)</button>
+                    </div>
 
-            <div className="step">
-              <span className="sdot">6</span>
-              <div className="sb">
-                <div className="sh"><h4>The pool &amp; the draw</h4></div>
-                <p>The draw picks a winner fairly (bigger deposit = better odds) with protocol randomness, entirely on encrypted balances. Available once the round ends — the live counters are in the header above.</p>
-                {roundEndTs != null && (
-                  <div className={"cdown " + (roundReady ? "rdy" : "")}>
-                    {roundReady
-                      ? <><span className="cdot" />Round ended — the draw is available</>
-                      : <>⏳ Draw possible in <b translate="no">{mmss(drawIn!)}</b> · deposits lock shortly before the draw</>}
+                    <div className="sub-step">
+                      <div className="sh"><h4>Hidden benefactor — Tanti caché <span className="opt">optional</span></h4><Fhe t="fully private" /></div>
+                      <p>Secretly send a share of your prize to another member <b>if you win</b> — anonymously. Nobody learns who gave, to whom, or how much.</p>
+                      <div className="row">
+                        <div className="grow"><label>Beneficiary — member #</label><input type="number" min={1} value={sponIdx} onChange={(e) => setSponIdx(e.target.value)} /></div>
+                        <div className="grow"><label>Share to route (%)</label><input type="number" min={0} max={100} value={sponPct} onChange={(e) => setSponPct(e.target.value)} /></div>
+                        <div className="ba"><button className="btn p sm" disabled={d} onClick={setSponsorship}>Set benefactor</button></div>
+                      </div>
+                    </div>
+
+                    <div className="sub-step">
+                      <div className="sh"><h4>Sponsor the prize <span className="opt">optional</span></h4><Fhe t="encrypted" /></div>
+                      <p>Top up the prize pot — as a sponsor, NGO or yield source — <b>blindly</b>, without seeing any balance or the winner.</p>
+                      <div className="row"><div className="grow"><label>Amount to add (cUSDC)</label><input type="number" value={fund} onChange={(e) => setFund(e.target.value)} /></div><div className="ba"><button className="btn gold sm" disabled={d} onClick={fundPrize}>Fund the prize</button></div></div>
+                    </div>
                   </div>
                 )}
-                <div className="row" style={{ marginTop: 10 }}>
-                  <button className="btn gold sm" disabled={d || !roundReady} onClick={draw}>{roundReady ? "Run the draw" : <>Draw in <span translate="no">{mmss(drawIn!)}</span></>}</button>
-                  <button className="btn p sm" disabled={d} onClick={claim}>Claim prize</button>
-                  <button className="btn ghost sm" disabled={d} onClick={claimSponsored}>Claim sponsored</button>
-                </div>
               </div>
             </div>
 
-            <div className="step">
-              <span className="sdot">7</span>
-              <div className="sb">
-                <div className="sh"><h4>Your private results</h4><Fhe t="you alone can read" /></div>
-                <p>Sign once to authorize, then reveal values that <b>only you</b> can decrypt — nobody else, not even us.</p>
-                {!authed && <button className="btn p sm" style={{ margin: "2px 0 12px" }} disabled={!addr || authorizing} onClick={authorize}>{authorizing ? "Signing…" : "Authorize decryption (sign once)"}</button>}
-                <div className="dec-grid">
-                  <div className="dec"><div className="dl">Did I win? (last round)</div><div className="dv"><b translate="no">{dval("win")}</b><button className="btn o mini" disabled={d} onClick={async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; decryptSlot("win", POOL, "didWin", [cur, addr]); }}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">My balance in the pool</div><div className="dv"><b translate="no">{dval("pool")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("pool", POOL, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">My wallet cUSDC</div><div className="dv"><b translate="no">{dval("wallet")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("wallet", TOKEN, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
-                  <div className="dec"><div className="dl">Sponsored winnings</div><div className="dv"><b translate="no">{dval("sponsored")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("sponsored", POOL, "sponsoredWonOf", [addr])}>decrypt</button></div></div>
-                </div>
-                <p className="muted small" style={{ marginBottom: 0 }}>“Did I win?” decrypts to <b>1</b> (won) or <b>0</b> (lost) — a value only you can read.</p>
+            {/* ───────── STAGE 3 — PRIZE ENGINE (real yield) ───────── */}
+            <div className="stage gold" id="s3">
+              <div className="stage-h"><span className="stg-num star">★</span><div className="stg-tt"><h3>The prize engine <span className="opt">Morpho</span></h3><p>The prize doesn't need a sponsor — it <b>funds itself</b> from real yield. Optional to run, but it's what makes NDIMBAL sustainable.</p></div><Fhe t="confidential" /></div>
+              <div className="stage-body">
+                <button className="adv-toggle" onClick={() => setShowEngine((v) => !v)} aria-expanded={showEngine}>
+                  <span className={"chev" + (showEngine ? " open" : "")}>▸</span> {showEngine ? "Hide the yield engine" : "+ Open the yield engine — route capital, earn, harvest into the prize"}
+                </button>
+                {showEngine && (
+                  <div className="adv-body">
+                    <p className="muted small" style={{ margin: "0 0 12px" }}>Route capital into a <b>confidential yield vault</b> (a Sepolia mock of Zama's <b>Steakhouse Confidential Prime USDC</b> vault on Morpho). The vault earns yield; <b>harvest</b> skims <b>only the yield</b> into the prize. Principal stays invested and encrypted — nobody ever sees a balance.</p>
+                    <div className="sub-step">
+                      <div className="row">
+                        <div className="grow"><label>① Capital to route (cUSDC)</label><input type="number" value={vaultAmt} onChange={(e) => setVaultAmt(e.target.value)} /></div>
+                        <div className="ba"><button className="btn p sm" disabled={d} onClick={fundVault}>① Route to vault</button></div>
+                      </div>
+                      <div className="row" style={{ marginTop: 10 }}>
+                        <div className="grow"><label>② Yield earned by the strategy <span className="opt">demo</span></label><input type="number" value={yieldAmt} onChange={(e) => setYieldAmt(e.target.value)} /></div>
+                        <div className="ba"><button className="btn o sm" disabled={d} onClick={simulateYield}>② Earn yield</button><button className="btn gold sm" disabled={d} onClick={harvestYield}>③ Harvest → prize</button></div>
+                      </div>
+                      <p className="muted small" style={{ marginBottom: 0 }}>The prize is now <b>generated</b>, not injected. In production, ②'s yield comes from the real Morpho strategy — not a button.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+
+            {/* ───────── STAGE 4 — DRAW & WIN ───────── */}
+            <div className="stage" id="s4">
+              <div className="stage-h"><span className="stg-num">4</span><div className="stg-tt"><h3>Draw &amp; win</h3><p>When the round ends, the draw picks the <b>top 3</b> savers fairly (bigger deposit = better odds) on encrypted balances. Prizes split <b>50 / 30 / 20</b>.</p></div></div>
+              <div className="stage-body">
+                <div className="sub-step">
+                  {roundEndTs != null && (
+                    <div className={"cdown " + (roundReady ? "rdy" : "")}>
+                      {roundReady
+                        ? <><span className="cdot" />Round ended — the draw is available</>
+                        : <>⏳ Draw possible in <b translate="no">{mmss(drawIn!)}</b> · deposits lock shortly before the draw</>}
+                    </div>
+                  )}
+                  <div className="row" style={{ marginTop: 10 }}>
+                    <button className="btn gold sm" disabled={d || !roundReady} onClick={draw}>{roundReady ? "Run the draw" : <>Draw in <span translate="no">{mmss(drawIn!)}</span></>}</button>
+                  </div>
+                </div>
+
+                <div className="sub-step">
+                  <div className="sh"><h4>Did I win? Claim or reinvest</h4><Fhe t="you alone can read" /></div>
+                  <p>Sign once to authorize, then reveal your result — a value <b>only you</b> can decrypt. If you won a tier, <b>Claim</b> takes the prize to your wallet, or <b>Reinvest</b> compounds it straight back into the pool (no-loss, better next-round odds).</p>
+                  {!authed && <button className="btn p sm" style={{ margin: "2px 0 12px" }} disabled={!addr || authorizing} onClick={authorize}>{authorizing ? "Signing…" : "Authorize decryption (sign once)"}</button>}
+                  <div className="dec-grid">
+                    <div className="dec win"><div className="dl">🏆 Did I win? (last round)</div><div className="dv"><b translate="no">{dval("win")}</b><button className="btn o mini" disabled={d} onClick={async () => { const r: bigint = await read(POOL, POOL_ABI, "round"); const cur = r > 0n ? r - 1n : 0n; decryptSlot("win", POOL, "didWin", [cur, addr]); }}>decrypt</button></div></div>
+                    <div className="dec"><div className="dl">My balance in the pool</div><div className="dv"><b translate="no">{dval("pool")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("pool", POOL, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
+                    <div className="dec"><div className="dl">My wallet cUSDC</div><div className="dv"><b translate="no">{dval("wallet")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("wallet", TOKEN, "confidentialBalanceOf", [addr])}>decrypt</button></div></div>
+                    <div className="dec"><div className="dl">Sponsored winnings</div><div className="dv"><b translate="no">{dval("sponsored")}</b><button className="btn o mini" disabled={d} onClick={() => decryptSlot("sponsored", POOL, "sponsoredWonOf", [addr])}>decrypt</button></div></div>
+                  </div>
+                  <p className="muted small" style={{ margin: "0 0 12px" }}>“Did I win?” decrypts to <b>1</b> (top-3) or <b>0</b> — a value only you can read.</p>
+                  <div className="row claim-row">
+                    <button className="btn p sm" disabled={d} onClick={claim}>💰 Claim prize</button>
+                    <button className="btn gold sm" disabled={d} onClick={claimReinvest}>♻ Reinvest &amp; compound</button>
+                    <button className="btn ghost sm" disabled={d} onClick={claimSponsored}>Claim sponsored</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -689,4 +720,49 @@ html{scroll-behavior:smooth}
 .ndm .play .sdot.star{background:linear-gradient(180deg,#efb562,#d6912f);color:#2a1e08;font-size:1rem;box-shadow:0 5px 15px rgba(184,122,40,.4)}
 .ndm .play .step.yldstep{position:relative}
 .ndm .play .step.yldstep::before{content:"";position:absolute;left:-14px;top:22px;bottom:16px;width:3px;border-radius:3px;background:linear-gradient(180deg,var(--gold),transparent)}
+
+/* ---------- 4-stage layout: progress stepper + stage cards ---------- */
+.ndm .stager{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0 4px}
+@media(max-width:640px){.ndm .stager{grid-template-columns:repeat(2,1fr)}}
+.ndm .stg-pill{display:flex;align-items:center;gap:11px;background:#0f151d;border:1px solid #222c39;border-radius:16px;padding:11px 13px;transition:transform .2s var(--ease),border-color .2s,background .2s}
+.ndm .stg-pill:hover{transform:translateY(-2px);border-color:#2f6b52;background:#101922}
+.ndm .stg-pill.req{border-color:rgba(55,225,160,.36);background:linear-gradient(180deg,rgba(55,225,160,.08),#0f151d)}
+.ndm .sp-n{flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;background:linear-gradient(180deg,#14c98d,#0e9268);color:#03130d;box-shadow:0 4px 12px rgba(16,170,116,.34)}
+.ndm .sp-t{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.ndm .sp-t b{color:#F2F6FA;font-size:.92rem;letter-spacing:-.01em}
+.ndm .sp-t i{font-style:normal;color:#8390a0;font-size:.72rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ndm .stage{background:linear-gradient(180deg,#0f151d,#0d131a);border:1px solid #1e2732;border-radius:22px;margin:16px 0;overflow:hidden;scroll-margin-top:78px;transition:border-color .3s}
+.ndm .stage:hover{border-color:#28323f}
+.ndm .stage.req{border-color:rgba(55,225,160,.28)}
+.ndm .stage.gold{border-color:rgba(228,162,76,.3)}
+.ndm .stage-h{display:flex;align-items:flex-start;gap:14px;padding:20px 22px;border-bottom:1px solid #1a222d;flex-wrap:wrap}
+.ndm .stage.req .stage-h{background:linear-gradient(180deg,rgba(55,225,160,.06),transparent)}
+.ndm .stage.gold .stage-h{background:linear-gradient(180deg,rgba(228,162,76,.07),transparent)}
+.ndm .stg-num{flex:none;width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;background:linear-gradient(180deg,#14c98d,#0e9268);color:#03130d;box-shadow:0 6px 16px rgba(16,170,116,.4)}
+.ndm .stg-num.star{background:linear-gradient(180deg,#efb562,#d6912f);color:#2a1e08;box-shadow:0 6px 16px rgba(184,122,40,.42)}
+.ndm .stg-tt{flex:1;min-width:180px}
+.ndm .stg-tt h3{margin:0;color:#fff;-webkit-text-fill-color:#fff;font-size:1.18rem;letter-spacing:-.01em;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ndm .stg-tt p{margin:5px 0 0;color:#8F9CAC;font-size:.88rem;line-height:1.5}
+.ndm .stg-tt p b{color:#DCE5EE}
+.ndm .reqtag{font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#03130d;background:var(--neon);padding:3px 9px;border-radius:999px}
+.ndm .stage-body{padding:18px 22px 22px}
+.ndm .sub-step{padding:14px 0}
+.ndm .sub-step+.sub-step{border-top:1px solid #1a222d;margin-top:2px}
+.ndm .sub-step .ss-txt{color:#8F9CAC;font-size:.9rem;line-height:1.55;margin-bottom:12px}
+.ndm .sub-step .ss-txt b{color:#DCE5EE}
+.ndm .sub-step .sh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap}
+.ndm .sub-step .sh h4{margin:0;color:#F2F6FA;font-size:1.02rem;letter-spacing:-.01em}
+.ndm .sub-step>p{margin:0 0 12px;color:#8F9CAC;font-size:.86rem;line-height:1.5}
+.ndm .sub-step>p b{color:#DCE5EE}
+.ndm .adv-toggle{display:inline-flex;align-items:center;gap:8px;margin-top:6px;background:#131b23;border:1px dashed #2b3644;color:#a9b6c4;font-family:inherit;font-weight:700;font-size:.86rem;padding:10px 15px;border-radius:12px;cursor:pointer;transition:background .2s,border-color .2s,color .2s;width:100%;text-align:left}
+.ndm .adv-toggle:hover{background:#17212b;border-color:#37E1A0;color:#cfe6dc}
+.ndm .adv-toggle .chev{display:inline-block;transition:transform .25s var(--ease);color:var(--neon)}
+.ndm .adv-toggle .chev.open{transform:rotate(90deg)}
+.ndm .adv-body{margin-top:8px;padding:2px 14px;border-left:2px solid #223142;animation:advIn .3s var(--ease)}
+@keyframes advIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.ndm .dec.win{background:linear-gradient(180deg,rgba(228,162,76,.1),#0f151d);border-color:rgba(228,162,76,.34)}
+.ndm .dec.win .dl{color:#F0B65C}
+.ndm .claim-row{gap:10px}
+.ndm .claim-row .btn.gold{position:relative;overflow:hidden}
+.ndm .claim-row .btn.gold::after{content:"";position:absolute;top:0;left:-130%;width:55%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.35),transparent);transform:skewX(-18deg);animation:sweep 3.2s ease-in-out infinite}
 `;
