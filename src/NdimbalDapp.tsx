@@ -86,8 +86,8 @@ export function NdimbalDapp() {
       add("  tx sent, confirming: https://sepolia.etherscan.io/tx/" + hash);
       const eth = (window as unknown as { ethereum: any }).ethereum;
       let receipt: any = null;
-      for (let i = 0; i < 60 && !receipt; i++) {
-        await new Promise((r) => setTimeout(r, 1500));
+      for (let i = 0; i < 90 && !receipt; i++) {
+        await new Promise((r) => setTimeout(r, 1000)); // poll every 1s so confirmation shows as soon as it lands
         try { receipt = await eth.request({ method: "eth_getTransactionReceipt", params: [hash] }); } catch {}
       }
       if (!receipt) add("  ⏳ " + label + ": still pending — check the link.");
@@ -121,7 +121,7 @@ export function NdimbalDapp() {
   const setSponsorship = () => { const i = +sponIdx || 0; const p = +sponPct || 0; if (i < 1) return; send(`Set hidden benefactor (member #${i}, ${p}%)`, async () => { const e = await encTwo(POOL, i, p); return write(POOL, POOL_ABI, "setSponsorship", [e.h1, e.h2, e.proof]); }); };
   async function waitTx(hash: string) {
     const eth = (window as unknown as { ethereum: any }).ethereum;
-    for (let i = 0; i < 60; i++) { await new Promise((r) => setTimeout(r, 1500)); const rc = await eth.request({ method: "eth_getTransactionReceipt", params: [hash] }).catch(() => null); if (rc) return rc; }
+    for (let i = 0; i < 90; i++) { await new Promise((r) => setTimeout(r, 1000)); const rc = await eth.request({ method: "eth_getTransactionReceipt", params: [hash] }).catch(() => null); if (rc) return rc; }
     return null;
   }
   // Batched draw: process the round in batches of 8 across several transactions (drawTickets → drawWinners),

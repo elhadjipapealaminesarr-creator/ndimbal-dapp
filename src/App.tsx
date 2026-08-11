@@ -27,15 +27,24 @@ function NetworkBg() {
       canvas.style.height = window.innerHeight + "px";
     };
     const init = () => {
-      const count = Math.max(28, Math.min(80, Math.floor(window.innerWidth / 26)));
+      // Fewer nodes = quadratically less work (the link pass is O(n²)). Capped at 48 so even a wide
+      // screen stays cheap, while still looking like a rich network.
+      const count = Math.max(22, Math.min(48, Math.floor(window.innerWidth / 42)));
       nodes = Array.from({ length: count }, () => ({
         x: Math.random() * w, y: Math.random() * h,
         vx: (Math.random() - 0.5) * 0.22 * DPR, vy: (Math.random() - 0.5) * 0.22 * DPR,
       }));
     };
     const LINK = 150 * DPR;
-    const draw = () => {
+    const LINK2 = LINK * LINK; // compare squared distances — skip Math.hypot (a sqrt) in the hot loop
+    let last = 0;
+    const FRAME = 1000 / 30; // cap at 30fps: a slow-drifting field is visually identical at half the CPU
+    const draw = (t = 0) => {
+      raf = requestAnimationFrame(draw);
+      if (t && t - last < FRAME) return; // throttle — do nothing between frames
+      last = t;
       ctx.clearRect(0, 0, w, h);
+      ctx.lineWidth = 1 * DPR;
       for (let i = 0; i < nodes.length; i++) {
         const a = nodes[i];
         a.x += a.vx; a.y += a.vy;
@@ -44,27 +53,33 @@ function NetworkBg() {
         for (let j = i + 1; j < nodes.length; j++) {
           const b = nodes[j];
           const dx = a.x - b.x, dy = a.y - b.y;
-          const d = Math.hypot(dx, dy);
-          if (d < LINK) {
-            ctx.strokeStyle = `rgba(37,225,160,${(1 - d / LINK) * 0.16})`;
-            ctx.lineWidth = 1 * DPR;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < LINK2) {
+            ctx.strokeStyle = `rgba(37,225,160,${(1 - Math.sqrt(d2) / LINK) * 0.16})`;
             ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
           }
         }
       }
-      for (const a of nodes) {
-        ctx.fillStyle = "rgba(228,162,76,0.6)";
-        ctx.beginPath(); ctx.arc(a.x, a.y, 1.6 * DPR, 0, Math.PI * 2); ctx.fill();
-      }
-      raf = requestAnimationFrame(draw);
+      ctx.fillStyle = "rgba(228,162,76,0.6)";
+      for (const a of nodes) { ctx.beginPath(); ctx.arc(a.x, a.y, 1.6 * DPR, 0, Math.PI * 2); ctx.fill(); }
     };
 
     resize(); init();
     if (reduce) { draw(); cancelAnimationFrame(raf); } // one static frame if the user prefers no motion
-    else draw();
+    else raf = requestAnimationFrame(draw);
     const onResize = () => { resize(); init(); };
+    // Pause the animation entirely when the tab is hidden → zero CPU/battery in the background.
+    const onVis = () => {
+      if (document.hidden) cancelAnimationFrame(raf);
+      else if (!reduce) { last = 0; raf = requestAnimationFrame(draw); }
+    };
     window.addEventListener("resize", onResize);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", onResize); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
   return <canvas ref={ref} aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }} />;
 }
