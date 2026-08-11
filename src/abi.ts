@@ -1,8 +1,8 @@
 import { parseAbi } from "viem";
 
-// Sepolia — live DEMO instance: 10-min rounds / 2-min lock, batched draw proven to 32 participants
+// Sepolia — live DEMO instance: 2-min rounds / 30s lock (fast cycle for demo + judges), batched draw proven to 32 participants
 // (top-3 tiered 50/30/20 — see the contract repo's test/capacity-32.test.js). For a live playable draw.
-export const POOL = "0xF23D0c33c76266484087C3805b54a8Ca5d9F6960" as const;
+export const POOL = "0x77bd980f13D475427d2538DB05eC195b2840849a" as const;
 export const TOKEN = "0xe98b1DDd5F51342b3048a3A51A758996bCdCE976" as const;
 export const VAULT = "0x4D22EC727D7Ab715531BBEfc55BFEA3BdAF250C7" as const; // confidential yield vault (Sepolia mock of Steakhouse Prime)
 
