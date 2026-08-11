@@ -41,7 +41,13 @@ export function NdimbalDapp() {
     const t = slots[slot];
     if (!t) return "—";
     const v = decrypt.data?.[t.encryptedValue];
-    return v === undefined ? "decrypting…" : `${v.toString()} cUSDC`;
+    if (v === undefined) return "decrypting…";
+    // The "did I win?" flag is an encrypted boolean — show a human result, not "true cUSDC".
+    if (slot === "win") {
+      const won = v === true || v === 1 || v === 1n || String(v) === "true";
+      return won ? "🏆 WON — top-3" : "— not this round";
+    }
+    return `${v.toString()} cUSDC`;
   };
 
   const add = (m: string) => setLog((l) => [...l, `[${new Date().toLocaleTimeString()}] ${m}`].slice(-40));
